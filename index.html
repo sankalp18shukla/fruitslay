@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html langh="en"
+<head>
+    <meta charset= "UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fruit slayyers</title>
+    <script src="httsp://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="httsp://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" crossorigin="anonymous"></script>
+    <script src="httsp://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff0000;
+            --orange: #ff9f00;
+            --blue: #00bfff;
+            --black: #000000;
+            --white: #ffffff;
+            --gray: #333333;
+
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--black);
+            color: var(--white);
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: var(--black);
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
+            border: 6px solid var(--white);
+            border-radius: 0px;
+        }
+
+        #scoreboard {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--black);
+            padding: 15px 30px; 
+            border-radius: 0px;
+            display: flex;
+            gap: 40px;
+            font-size: 12px;
+            font-weight: normal;
+            border: 4px solid var(--white);
+            box-shadow: 0 10px 0px rgba(0, 0, 0, 1);
+            z-index: 10;
+        }
+
+        .score-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #my-score { color: var(--orange); }
+        #peer-score { color: var(--blue); }
+
+        .video-box {
+            position: absolute;
+            width: 200px;
+            height: 150px;
+            border-radius: 0px;
+            overflow: hidden;
+            background: var(--black);
+            box-shadow: 0 10px 0px rgba(0, 0, 0, 1);
+            transition: transform 0.3s ease;
+        }
+
+        #left-video-box {
+            bottom: 25px;
+            left: 25px;
+            border: 4px solid var(--blue);
+        }
+
+        #right-video-box {
+            bottom: 25px;
+            right: 25px;
+            border: 4px solid var(--orange);
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .video-label {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background: var(--black);
+            border: 2px solid var(--white);
+            color: var(--white);
+            padding: 4px 8px;
+            font-size: 8px;
+            border-radius: 0px;
+            text-transform: uppercase;
+        }
+
+        #setup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--black);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+        }
+
+        .setup-card {
+            background: var(--black);
+            border: 6px solid var(--white);
+            padding: 40px;
+            border-radius: 0px;
+            max-width: 480px;
+            width: 85%;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: var(--white);
+            margin-bottom: 20px;
+        }
+
+        
