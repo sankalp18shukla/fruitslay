@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en"
+<html lang="en">
 <head>
-    <meta charset= "UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>fruit slayyers</title>
-    <script src="httsp://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="httsp://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" crossorigin="anonymous"></script>
-    <script src="httsp://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -29,7 +29,7 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div class="video-box" id="left-video-box">
         <video id="leftVideo" autoplay playsinline></video>
-        <div class="video-label" id="left-label">Invited Friend</div>ˀ
+        <div class="video-label" id="left-label">Invited Friend</div>
     </div>
     <div class="video-box" id="right-video-box">
         <video id="rightVideo" autoplay playsinline></video>
@@ -41,7 +41,7 @@
             <p id="setup-status">Configuring hand tracking and secure P2P stream...</p>
             <div id="share-link-section" style="display: none;">
                 <p style="color: #888; font-size: 9px; line-height: 1.6;">Share this link with your friend to peer:</p>
-                <input type="text" id="share-link-input" readonly>
+                <input type="text" id="share-url" readonly>
                 <br>
                 <button onclick="copyShareUrl()">Copy Link</button>
             </div>

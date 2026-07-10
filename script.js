@@ -1,9 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const localVideo = document.getElementById('localVideo');
-    const peerVideo = document.getElementById('peerVideo');
+const ctx = canvas.getContext('2d');
 
-    let myScore = 0;
+let myScore = 0;
     let peerScore = 0;
 
     let fruits = [];
@@ -126,7 +124,7 @@ const canvas = document.getElementById('gameCanvas');
 
     }
 
-    function updateParticles() {
+    function updatePhysics() {
         for (let i = fruits.length - 1; i >= 0; i--) {
             const fruit = fruits[i];
             if (!fruit.sliced) {
@@ -207,7 +205,7 @@ const canvas = document.getElementById('gameCanvas');
             ctx.beginPath(); ctx.arc(0, 0, radius * 0.85, 0, Math.PI * 2); ctx.fill();
         } else if (type === 'banana') {
             ctx.fillStyle = '#ffff00';
-            ctx.beginPath(); ctx.ellipse(0, 0, radius * 1.3, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, 0, radius * 1.3, radius * 0.45, 0, 0, Math.PI *2); ctx.fill();
         }
 
     }
@@ -231,7 +229,7 @@ const canvas = document.getElementById('gameCanvas');
             ctx.arc(s.x, s.y + s.dripY, s.radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
-            ctx.rect(s.x - s.radius * 0.25, s.y, s.radius * 0.5, dripY);
+            ctx.rect(s.x - s.radius * 0.25, s.y, s.radius * 0.5, s.dripY);
             ctx.fill();
             ctx.restore();
         });
@@ -246,15 +244,15 @@ const canvas = document.getElementById('gameCanvas');
             ctx.restore();
         });
 
-        sliceRays.forrEach(r =>{
+        sliceRays.forEach(r => {
             ctx.save();
             ctx.globalAlpha = r.alpha;
             ctx.shadowBlur = 25;
             ctx.shadowColor = r.color;
-            ctx.strokeStyle = '#ffffff'
-            ctx.lineWidth = r.widt;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = r.width;
             ctx.beginPath();
-            ctx.moveTo(r.x, r.y)
+            ctx.moveTo(r.x, r.y);
             ctx.lineTo(r.x + Math.cos(r.angle) * r.length, r.y + Math.sin(r.angle) * r.length);
             ctx.stroke();
             ctx.restore();
@@ -271,7 +269,7 @@ const canvas = document.getElementById('gameCanvas');
                 ctx.shadowOffsetY = 8;
 
                 if (img) {
-                     ctx.drawImage(img, -fruit.radius )
+                    ctx.drawImage(img, -fruit.radius, -fruit.radius, fruit.radius * 2, fruit.radius * 2);
                 } else {
                     drawDetailedFruitFallback(ctx, fruit.name, fruit.radius);
                 }
@@ -317,7 +315,7 @@ const canvas = document.getElementById('gameCanvas');
         }
 
         if (peerPointer.x !== -1){
-            drawAnimatedPointer(peerPointer.x, peerPointer.y, #00ffff);
+            drawAnimatedPointer(peerPointer.x, peerPointer.y, '#00ffff');
         }
     }
 
@@ -327,7 +325,7 @@ const canvas = document.getElementById('gameCanvas');
         ctx.shadowBlur = 24;
         ctx.shadowColor = glowColor;
 
-        for (let i = 1, i < trail.length; i++) {
+        for (let i = 1; i < trail.length; i++) {
             const p1 = trail[i - 1];
             const p2 = trail[i];
             const alpha = (i / trail.length);
@@ -362,5 +360,329 @@ const canvas = document.getElementById('gameCanvas');
         ctx.beginPath();
         ctx.arc(x, y, 11 + Math.sin(time * 2) * 3, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+            const angle = time + (i * Math.PI) / 2;
+            const targetX = x + Math.cos(angle) * 14;
+            const targetY = y + Math.sin(angle) * 14;
+            ctx.moveTo(x, y);
+            ctx.quadraticCurveTo(x + Math.cos(angle + 0.3) * 8, y + Math.sin(angle + 0.3) * 8, targetX, targetY);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+            const angle = (i * Math.PI)/ 4 + time * 1.5;
+            const r = i%2 === 0 ? 15 : 6;
+            ctx.lineTo(x + Math.cos(angle) * r, y + Math.sin(angle) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
+
+    function spawnFruit() {
+        const fruitTemplates = [
+            { color: '#ff3333', name : 'watermelon', radius : 40},
+            { color: '#ff9900', name : 'orange', radius : 40},
+            { color: '#66ff66', name : 'kiwi', radius : 40},
+            { color: '#ffcc00', name : 'mango', radius : 40},
+            { color: '#ffff33', name : 'banana', radius : 40},
+        ]
+
+        const template = fruitTemplates[Math.floor(Math.random()* fruitTemplates.length)];
+        const fruit = {
+            id: 'f-' + Math.random().toString(36).substring(2, 9),
+            x: canvas.width * (0.15 + Math.random() * 0.7),
+            y: canvas.height + 40, 
+            vx: (Math.random() - 0.5) * 4.8, 
+            vy: -11 -Math.random() * 4.8,
+            radius: template.radius,
+            color: template.color,
+            name: template.name,
+            sliced: false,
+            sliceAngle: 0,
+            age: 0,
+            spinAngle: Math.random() * Math.PI,
+            spinSpeed: (Math.random() - 0.5) * 0.1
+        };
+
+        fruits.push(fruit);
+        if (conn && conn.open) {
+            conn.send({ type: 'spawn', fruit});
+        }
+    }
+
+    function checkSlice(x1, y1, x2, y2, actor) {
+        if (x1 === -1 || y1 === -1) return;
+        fruits.forEach(fruit => {
+            if (fruit.sliced) return;
+            const segments = 8;
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const sx = x1 + (x2 - x1)*t;
+                const sy = y1 + (y2 -y1)*t;
+
+                const dist = Math.hypot(fruit.x - sx, fruit.y - sy);
+                if (dist < fruit.radius) {
+                    executeSlice(fruit, actor);
+                    break;
+                }
+            }
+        });
+    }
+
+    function setupVideoAssignments() {
+        const leftVideo = document.getElementById('leftVideo');
+        const rightVideo = document.getElementById('rightVideo');
+        const leftLabel = document.getElementById('left-label');
+        const rightLabel = document.getElementById('right-label');
+        const leftBox = document.getElementById('left-video-box');
+        const rightBox = document.getElementById('right-video-box');
+
+        if (isHost) {
+            rightVideo.srcObject = localStream;
+            rightVideo.muted = true;
+            rightLabel.innerText = "You (Host)";
+            rightBox.style.borderColor = "var(--orange)";
+
+            leftLabel.innerText = "Friend";
+            leftBox.style.borderColor = "var(--blue)";
+        } else {
+            leftVideo.srcObject = localStream;
+            leftVideo.muted = true;
+            leftLabel.innerText = "You (Friend)";
+            leftBox.style.borderColor = "var(--orange)";
+            rightLabel.innerText = "Host";
+            rightBox.style.borderColor = "var(--blue)";
+        }
+    }
+
+    function executeSlice(fruit, actor) {
+        fruit.sliced = true;
+        let swipeVectorX = 1;
+        let swipeVectorY = 0;
+        if (actor === 'me') {
+            swipeVectorX = myPointer.x - myPointer.lastX;
+            swipeVectorY = myPointer.y -myPointer.lastY;
+        } else {
+            swipeVectorX = peerPointer.x - peerPointer.lastX;
+            swipeVectorY = peerPointer.y - peerPointer.lastY; 
+        }
+        fruit.sliceAngle = Math.atan2(swipeVectorY, swipeVectorX);
+        if (isNaN(fruit.sliceAngle)) fruit.sliceAngle = Math.random() * Math.PI;
+
+        createSplat(fruit.x, fruit.y, fruit.color);
+        playSliceSound();
+        if (actor === 'me') {
+            myScore++;
+            document.getElementById('my-score-val').innerText = myScore;
+            if (conn && conn.open) {
+                conn.send({type : 'slice', fruitId : fruit.id });
+            }
+        } else {
+            peerScore++
+            document.getElementById('peer-score-val').innerText = peerScore;
+        }
+    }
+
+    function initHandTracking() {
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 0,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults((results) => {
+            if (!trackingReady) {
+                trackingReady = true;
+                updateStatus(isHost ? "Waiting for peer to join..." : "Connecting to session...");
+            }
+            processHandMovement(results);
+        });
+
+        const activeLocalVideo = isHost ? document.getElementById('rightVideo') : document.getElementById('leftVideo');
+        const camera = new Camera(activeLocalVideo, {
+            onFrame: async () =>  {
+                await hands.send({ image: activeLocalVideo });
+            },
+            width: 320,
+            height: 240,
+        });
+        camera.start();
+    }
+
+    function processHandMovement(results) {
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const hand = results.multiHandLandmarks[0];
+            const indexTip = hand[8];
+            const mappedX = (1 - indexTip.x) * canvas.width;
+            const mappedY = indexTip.y * canvas.height;
+
+            myPointer.lastX = myPointer.x;
+            myPointer.lastY = myPointer.y;
+            myPointer.x = mappedX;
+            myPointer.y = mappedY;
+
+            myTrail.push({ x: mappedX, y: mappedY });
+            if (myTrail.length > 14) myTrail.shift();
+            
+            checkSlice(myPointer.lastX, myPointer.lastY, mappedX, mappedY, 'me');
+            if (conn && conn.open) {
+                conn.send({ type: 'cursor', x: mappedX, y: mappedY });
+            }
+
+            const speed = Math.hypot(mappedX - myPointer.lastX, mappedY - myPointer.lastY );
+            if (speed > 45 && Date.now() - lastSwingTime > 300 ) {
+                playSwingSound();
+                lastSwingTime = Date.now();
+            }
+        }   else {
+            myPointer.x = -1;
+            myPointer.y = -1;
+            if (myTrail.length > 0) myTrail.shift();
+        }
+    }
+
+    async function initConnection() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio : true });
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('room');
+            if (roomId) {
+                isHost = false;
+            } else {
+                isHost = true;
+            }
+
+            setupVideoAssignments();
+            initHandTracking();
+
+            if (isHost) {
+                const hostRoomId = 'ninja-' + Math.random().toString(36).substring(2, 8);
+                peer = new Peer(hostRoomId);
+                peer.on('open', (id) => {
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${id}`;
+                    document.getElementById('share-url').value = shareUrl;
+                    document.getElementById('share-link-section').style.display = 'block';
+                    updateStatus("Setup Complete. Share this link to start playing!");
+                });
+
+                peer.on('connection', (connection) => {
+                    conn = connection;
+                    setupDataHandlers();
+                });
+
+                peer.on('call', (call) => {
+                    call.answer(localStream);
+                    handleStreamCall(call);
+                });
+            } else {
+                peer = new Peer();
+                peer.on('open', () => {
+                    connectToPeer(roomId);
+                });
+                peer.on('error', (err) => {
+                    console.error(err);
+                    updateStatus('Connection error: ' + (err.message || err));
+                });
+                updateStatus('Connecting to session...');
+            }
+        } catch(err) {
+            console.error(err);
+            updateStatus("Camera/Microphone access blocked. Enable permission to continue.");
+        }
+    }
+
+    function connectToPeer(hostId) {
+        conn = peer.connect(hostId);
+        setupDataHandlers();
+        const call = peer.call(hostId, localStream);
+        handleStreamCall(call);
+    }
+
+    function handleStreamCall(call) {
+        call.on('stream', (remoteStream) =>{
+            if(isHost) {
+                document.getElementById('leftVideo').srcObject = remoteStream;
+            } else {
+                document.getElementById('rightVideo').srcObject = remoteStream;
+            }
+            document.getElementById('setup-overlay').style.display = 'none';
+        });
+    }
+    function setupDataHandlers() {
+        conn.on('open', () => {
+            document.getElementById('setup-overlay').style.display = 'none';
+            if (isHost) {
+                startSpawning();
+            }
+        });
+
+        conn.on('data', (data) => {
+            if (data.type === 'cursor') {
+                peerPointer.lastX = peerPointer.x;
+                peerPointer.lastY = peerPointer.y;
+                peerPointer.x = data.x;
+                peerPointer.y = data.y;
+                peerTrail.push({ x: data.x, y: data.y});
+                if (peerTrail.length > 14) peerTrail.shift();
+            } else if (data.type === 'spawn') {
+                fruits.push(data.fruit);
+            } else if (data.type === 'slice') {
+                const targetFruit = fruits.find(f => f.id === data.fruitId);
+                if (targetFruit && !targetFruit.sliced) {
+                    executeSlice(targetFruit, 'peer');
+                }
+            }
+        });
+
+        conn.on('close', () => { 
+            alert("Connection closed. The friend disconnected.");
+            location.reload();
+        });
+    }
+
+    function updateStatus(text) {
+        document.getElementById('setup-status').innerText = text;
+    }
+
+    function copyShareUrl() {
+        const urlBox = document.getElementById('share-url');
+        if (!urlBox) return;
+        urlBox.select();
+        urlBox.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(urlBox.value);
+        const btn = document.querySelector("#share-link-section button");
+        if (btn) {
+            btn.innerText = "Copied!";
+            setTimeout(() => { btn.innerText = "Copy Link"; }, 2000);
+        }
+    }
+
+    function startSpawning() {
+        if (spawnIntervalId) return;
+        spawnFruit();
+        spawnIntervalId = setInterval(spawnFruit, 1400);
+    }
+
+    function gameLoop() {
+        updatePhysics();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    initConnection();
+    gameLoop();
+
+
+
+
+
 
