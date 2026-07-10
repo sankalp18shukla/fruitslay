@@ -352,3 +352,15 @@ const canvas = document.getElementById('gameCanvas');
         ctx.restore();
     }
 
+    function drawAnimatedPointer(x, y, color) {
+        ctx.save();
+        const time = Date.now() * 0.005;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 11 + Math.sin(time * 2) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
