@@ -16,24 +16,23 @@
 <body>
 
 <div id="game-container">
-    <div id="scoreboard">
-        <div class="score-box" id="my-score">
-            <span>YOU:</span>
-            <span id="my-score-val">0</span>
-        </div>
-        <div class="score-box" id="peer-score">
-            <span>FRIEND:</span>
-            <span id="peer-score-val">0</span>
-        </div>
+    <div id="scoreboard"></div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="video-box" id="video-slot-0" style="bottom: 25px; right: 25px; border-color: #ff9f00; display: none;">
+        <video id="video-0" autoplay playsinline></video>
+        <div class="video-label" id="label-0">Slot 0</div>
     </div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div class="video-box" id="left-video-box">
-        <video id="leftVideo" autoplay playsinline></video>
-        <div class="video-label" id="left-label">Invited Friend</div>
+    <div class="video-box" id="video-slot-1" style="bottom: 25px; left: 25px; border-color: #00ffff; display: none;">
+        <video id="video-1" autoplay playsinline></video>
+        <div class="video-label" id="label-1">Slot 1</div>
     </div>
-    <div class="video-box" id="right-video-box">
-        <video id="rightVideo" autoplay playsinline></video>
-        <div class="video-label" id="right-label">You</div>
+    <div class="video-box" id="video-slot-2" style="top: 25px; left: 25px; border-color: #ff00ff; display: none;">
+        <video id="video-2" autoplay playsinline></video>
+        <div class="video-label" id="label-2">Slot 2</div>
+    </div>
+    <div class="video-box" id="video-slot-3" style="top: 25px; right: 25px; border-color: #00ff00; display: none;">
+        <video id="video-3" autoplay playsinline></video>
+        <div class="video-label" id="label-3">Slot 3</div>
     </div>
     <div id="setup-overlay">
         <div class="setup-card">

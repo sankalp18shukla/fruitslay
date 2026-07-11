@@ -1,8 +1,13 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let myScore = 0;
-    let peerScore = 0;
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
 
     let fruits = [];
     let particles = [];
@@ -13,17 +18,66 @@ let myScore = 0;
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    let myPointer = { x: -1, y: -1, lastX: -1, lastY: -1 };
-    let peerPointer = { x: -1, y: -1, lastX: -1, lastY: -1 };
-    let myTrail = [];
-    let peerTrail = [];
     let lastSwingTime = 0;
 
-    let isHost = false;
+    const SLOT_COLORS = ['#ff9f00', '#00ffff', '#ff00ff', '#00ff00'];
+    let players = {};
+    let myId = null;
+    let mySlot = 0;
+    let isHost = true;
     let peer;
-    let conn;
+    let conns = {};
+    let calls = {};
     let localStream;
     let trackingReady = false;
+
+    function getPlayerCount() {
+        return Object.keys(players).length;
+    }
+
+    function renderScoreboard() {
+        const board = document.getElementById('scoreboard');
+        if (!board) return;
+        board.innerHTML = '';
+        Object.keys(players).forEach(pId =>{
+            const player = players[pId];
+            const displayLabel = pId === myId ? "YOU" : player.label;
+            const scoreBox = document.createElement('div');
+            scoreBox.className = 'score-box';
+            scoreBox.style.color = player.color;
+            scoreBox.style.display = 'flex';
+            scoreBox.style.gap = '8px';
+            scoreBox.innerHTML = `<span>${displayLabel}:</span><span>${player.score}</span>`;
+            board.appendChild(scoreBox);
+        });
+    }
+
+    function updateVideoSlots() {
+        for (let i = 0; i < 4; i++) {
+            document.getElementById(`video-slot-${i}`).style.display = 'none';
+        }
+
+        Object.keys(players).forEach(pId => {
+            const player = players[pId];
+            const slotIdx = player.slot;
+            const slotEl = document.getElementById(`video-slot-${slotIdx}`);
+            const labelEl = document.getElementById(`label-${slotIdx}`);
+            const videoEl = document.getElementById(`video-${slotIdx}`);
+
+            if (slotEl && labelEl && videoEl) {
+                slotEl.style.display = 'block';
+                labelEl.innerText = pId === myId ? "YOU" : player.label;
+
+                if (pId === myId && localStream) {
+                    videoEl.srcObject = localStream;
+                    videoEl.muted = true;
+                }
+            }
+        });
+    }
+
+
+
 
     const FRUIT_PRESETS = {
         watermelon: { name: 'watermelon', radius: 40, color: '#ff3333', src: 'watermelon.png' },
@@ -87,6 +141,55 @@ let myScore = 0;
         osc.start();
         osc.stop(audioCtx.currentTime + 0.1);
     }
+
+    function playExplosionSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(10, audioCtx.currentTime + 0.6);
+
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.6);
+}
+
+function createBombExplosion(x, y) {
+    for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = 2 + Math.random() * 8;
+        const colors = ['#ff3300', '#ffaa00', '#ffff00', '#555555'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 2,
+            radius: Math.random() * 6 + 4,
+            color,
+            alpha: 1.0
+        });
+    }
+
+    const rayCount = 12;
+    for (let i = 0; i < rayCount; i++) {
+        sliceRays.push({
+            x, y,
+            angle: (i * Math.PI * 2) / rayCount,
+            length: 180 + Math.random() * 120,
+            width: 8 + Math.random() * 6,
+            color: '#ffea00',
+            alpha: 1.0
+        });
+    }
+}
 
     function createSplat(x, y, color) {
         for (let i = 0; i < 20; i++) {
@@ -291,14 +394,26 @@ let myScore = 0;
     }
 
     function draw() {
-        ctx.fillStyle = '#000000';
+        // ctx.fillStyle = '#000000';
+        // ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // ctx.strokeStyle = '#1e1e1e';
+        // ctx.lineWidth = 1;
+        // for (let x =0; x < canvas.width; x += 40) {
+        //     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        // }
+        // for (let y =0; y < canvas.height; y += 40) {
+        //     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        // }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#1e1e1e';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
         ctx.lineWidth = 1;
-        for (let x =0; x < canvas.width; x += 40) {
+        for (let x=0; x < canvas.width; x += 40) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
         }
-        for (let y =0; y < canvas.height; y += 40) {
+        for (let y=0; y < canvas.height; y += 40) {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
         }
         backgroundSplats.forEach(s => {
@@ -386,17 +501,18 @@ let myScore = 0;
             }
             
         });
-
-        drawTrail(myTrail, '#ffffff', '#ffaa00');
-        drawTrail(peerTrail, '#ffffff', '#00ffff');
-
-        if (myPointer.x !== -1){
-            drawAnimatedPointer(myPointer.x, myPointer.y, '#ffaa00');
-        }
-
-        if (peerPointer.x !== -1){
-            drawAnimatedPointer(peerPointer.x, peerPointer.y, '#00ffff');
-        }
+        Object.keys(players).forEach(pId =>{
+            const player = players[pId];
+            if (player && player.trail && player.trail.length > 0) {
+                drawTrail(player.trail, '#ffffff', player.color);
+            }
+        });
+        Object.keys(players).forEach(pId =>{
+            const player = players[pId];
+            if (player && player.pointer && player.pointer.x !== -1) {
+                drawAnimatedPointer(player.pointer.x, player.pointer.y, player.color);
+            }
+        });
     }
 
     function drawTrail(trail, coreColor, glowColor) {
@@ -496,9 +612,16 @@ let myScore = 0;
         };
 
         fruits.push(fruit);
-        if (conn && conn.open) {
-            conn.send({ type: 'spawn', fruit});
-        }
+        broadcastToGuests({ type : 'spawn', fruit });
+    }
+
+    function broadcastToGuests(data) {
+        Object.keys(conns).forEach(peerId =>{
+            const connObj = conns[peerId];
+            if (connObj && connObj.open) {
+                connObj.send(data);
+            }
+        });
     }
 
     function checkSlice(x1, y1, x2, y2, actor) {
@@ -520,66 +643,63 @@ let myScore = 0;
         });
     }
 
-    function setupVideoAssignments() {
-        const leftVideo = document.getElementById('leftVideo');
-        const rightVideo = document.getElementById('rightVideo');
-        const leftLabel = document.getElementById('left-label');
-        const rightLabel = document.getElementById('right-label');
-        const leftBox = document.getElementById('left-video-box');
-        const rightBox = document.getElementById('right-video-box');
-
-        if (isHost) {
-            rightVideo.srcObject = localStream;
-            rightVideo.muted = true;
-            rightLabel.innerText = "You (Host)";
-            rightBox.style.borderColor = "var(--orange)";
-
-            leftLabel.innerText = "Friend";
-            leftBox.style.borderColor = "var(--blue)";
-        } else {
-            leftVideo.srcObject = localStream;
-            leftVideo.muted = true;
-            leftLabel.innerText = "You (Friend)";
-            leftBox.style.borderColor = "var(--orange)";
-            rightLabel.innerText = "Host";
-            rightBox.style.borderColor = "var(--blue)";
-        }
-    }
-
-    function executeSlice(fruit, actor) {
+ function executeSlice(fruit, actorId) {
         fruit.sliced = true;
         let swipeVectorX = 1;
         let swipeVectorY = 0;
-        if (actor === 'me') {
-            swipeVectorX = myPointer.x - myPointer.lastX;
-            swipeVectorY = myPointer.y -myPointer.lastY;
-        } else {
-            swipeVectorX = peerPointer.x - peerPointer.lastX;
-            swipeVectorY = peerPointer.y - peerPointer.lastY; 
+        
+        const player = players[actorId];
+        if (player) {
+            swipeVectorX = player.pointer.x - player.pointer.lastX;
+            swipeVectorY = player.pointer.y - player.pointer.lastY;
+            
+           
+            if (fruit.isBomb) {
+                player.score = Math.max(0, player.score - 10);
+            } else {
+                player.score++;
+            }
         }
+
         fruit.sliceAngle = Math.atan2(swipeVectorY, swipeVectorX);
         if (isNaN(fruit.sliceAngle)) fruit.sliceAngle = Math.random() * Math.PI;
 
-        createSplat(fruit.x, fruit.y, fruit.color);
-        playSliceSound();
-        if (actor === 'me') {
-            if (fruit.isBomb) {
-                myScore = Math.max(0, myScore - 10);
-            } else {
-                myScore++;
-            }
-            document.getElementById('my-score-val').innerText = myScore;
-            if (conn && conn.open) {
-                conn.send({type : 'slice', fruitId : fruit.id });
-            }
+        if (fruit.isBomb) {
+            createBombExplosion(fruit.x, fruit.y);
+            playExplosionSound();
         } else {
-            if (fruit.isBomb) {
-                peerScore = Math.max(0, peerScore - 10);
-            } else {
-                peerScore++;
-            }
-            document.getElementById('peer-score-val').innerText = peerScore;
+            createSplat(fruit.x, fruit.y, fruit.color);
+            playSliceSound();
         }
+
+        renderScoreboard();
+
+        if (isHost) {
+            broadcastToGuests({
+                type: 'state-sync',
+                playersState: serializePlayers(),
+                slicedFruitId: fruit.id,
+                sliceAngle: fruit.sliceAngle
+            });
+        } else if (actorId === myId) {
+            const hostConn = conns[Object.keys(conns)[0]];
+            if (hostConn && hostConn.open) {
+                hostConn.send({ type: 'slice-request', fruitId: fruit.id, sliceAngle: fruit.sliceAngle });
+            }
+        }
+    }
+
+    function serializePlayers() {
+        let serialized = {};
+        Object.keys(players).forEach(pId => {
+            serialized[pId] = {
+                score: players[pId].score,
+                slot: players[pId].slot,
+                color: players[pId].color,
+                label: players[pId].label
+            };
+        });
+        return serialized;
     }
 
     function initHandTracking() {
@@ -602,7 +722,7 @@ let myScore = 0;
             processHandMovement(results);
         });
 
-        const activeLocalVideo = isHost ? document.getElementById('rightVideo') : document.getElementById('leftVideo');
+        const activeLocalVideo = document.getElementById(`video-${mySlot}`);
         const camera = new Camera(activeLocalVideo, {
             onFrame: async () =>  {
                 await hands.send({ image: activeLocalVideo });
@@ -614,34 +734,43 @@ let myScore = 0;
     }
 
     function processHandMovement(results) {
+        if(!myId || !players[myId]) return;
+        const localPlayer = players[myId];
+
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const hand = results.multiHandLandmarks[0];
             const indexTip = hand[8];
             const mappedX = (1 - indexTip.x) * canvas.width;
             const mappedY = indexTip.y * canvas.height;
 
-            myPointer.lastX = myPointer.x;
-            myPointer.lastY = myPointer.y;
-            myPointer.x = mappedX;
-            myPointer.y = mappedY;
+            localPlayer.pointer.lastX = localPlayer.pointer.x;
+            localPlayer.pointer.lastY = localPlayer.pointer.y;
+            localPlayer.pointer.x = mappedX;
+            localPlayer.pointer.y = mappedY;
 
-            myTrail.push({ x: mappedX, y: mappedY });
-            if (myTrail.length > 14) myTrail.shift();
+            localPlayer.trail.push({ x: mappedX, y: mappedY });
+            if (localPlayer.trail.length > 14) localPlayer.trail.shift();
             
-            checkSlice(myPointer.lastX, myPointer.lastY, mappedX, mappedY, 'me');
-            if (conn && conn.open) {
-                conn.send({ type: 'cursor', x: mappedX, y: mappedY });
+            checkSlice(localPlayer.pointer.lastX, localPlayer.pointer.lastY, mappedX, mappedY, myId);
+            
+            if (isHost) {
+                broadcastToGuests({ type: 'cursor', playerId: myId, x: mappedX, y: mappedY});
+            } else {
+                const hostConn = conns[Object.keys(conns)[0]];
+                if (hostConn && hostConn.open) {
+                    hostConn.send({ type: 'cursor-request', x: mappedX, y: mappedY});
+                }
             }
 
-            const speed = Math.hypot(mappedX - myPointer.lastX, mappedY - myPointer.lastY );
+            const speed = Math.hypot(mappedX - localPlayer.pointer.lastX, mappedY - localPlayer.pointer.lastY );
             if (speed > 45 && Date.now() - lastSwingTime > 300 ) {
                 playSwingSound();
                 lastSwingTime = Date.now();
             }
         }   else {
-            myPointer.x = -1;
-            myPointer.y = -1;
-            if (myTrail.length > 0) myTrail.shift();
+            localPlayer.pointer.x = -1;
+            localPlayer.pointer.y = -1;
+            if (localPlayer.trail.length > 0) localPlayer.trail.shift();
         }
     }
 
@@ -650,99 +779,297 @@ let myScore = 0;
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio : true });
             const urlParams = new URLSearchParams(window.location.search);
             const roomId = urlParams.get('room');
-            if (roomId) {
-                isHost = false;
-            } else {
-                isHost = true;
-            }
 
-            setupVideoAssignments();
-            initHandTracking();
+            isHost = !roomId
 
-            if (isHost) {
-                const hostRoomId = 'ninja-' + Math.random().toString(36).substring(2, 8);
+            if(isHost) {
+                const hostRoomId = 'ninja-' + Math.random().toString(36).substring(2,8);
                 peer = new Peer(hostRoomId);
-                peer.on('open', (id) => {
+
+                peer.on('open', (id) =>{
+                    myId = id;
+                    mySlot = 0;
+
+                    players[myId] = {
+                        id: myId,
+                        slot: 0,
+                        score: 0,
+                        color: SLOT_COLORS[0],
+                        pointer: { x:-1, y:-1, lastX: -1, lastY: -1 },
+                        trail: [],
+                        label: "Host"
+                    };
+                    renderScoreboard();
+                    updateVideoSlots();
+
                     const shareUrl = `${window.location.origin}${window.location.pathname}?room=${id}`;
                     document.getElementById('share-url').value = shareUrl;
                     document.getElementById('share-link-section').style.display = 'block';
-                    updateStatus("Setup Complete. Share this link to start playing!");
+                    updateStatus("Setup Complete. Share this link with up to 3 friends!");
+                    initHandTracking();
                 });
-
                 peer.on('connection', (connection) => {
-                    conn = connection;
-                    setupDataHandlers();
+                    if (getPlayerCount() >= 4) {
+                        connection.on('open', () => {
+                            connection.send({ type: 'rejected', reason: 'Lobby is full! Max 4 players.'});
+                            setTimeout(() => connection.close(), 1000);
+                        });
+                        return;
+                    }
+                    setupHostDataHandlers(connection);
                 });
-
                 peer.on('call', (call) => {
+                    if (getPlayerCount() > 4) {
+                        call.close();
+                        return;
+                    }
                     call.answer(localStream);
-                    handleStreamCall(call);
+                    calls[call.peer] = call;
+                    handleHostStreamCall(call);
                 });
             } else {
                 peer = new Peer();
-                peer.on('open', () => {
-                    connectToPeer(roomId);
+                peer.on('open', (id) => {
+                    myId = id;
+                    updateStatus("Connecting to your friend's game room...");
+                    connectToPeer(roomId)
                 });
-                peer.on('error', (err) => {
-                    console.error(err);
-                    updateStatus('Connection error: ' + (err.message || err));
-                });
-                updateStatus('Connecting to session...');
             }
-        } catch(err) {
+        } catch (err) {
             console.error(err);
             updateStatus("Camera/Microphone access blocked. Enable permission to continue.");
         }
     }
 
     function connectToPeer(hostId) {
-        conn = peer.connect(hostId);
-        setupDataHandlers();
+        const connection = peer.connect(hostId);
+        conns[hostId] = connection;
+        setupGuestDataHandlers(connection);
+        
         const call = peer.call(hostId, localStream);
-        handleStreamCall(call);
+        calls[hostId] = call;
+        handleGuestStreamCall(call);
     }
 
-    function handleStreamCall(call) {
-        call.on('stream', (remoteStream) =>{
-            if(isHost) {
-                document.getElementById('leftVideo').srcObject = remoteStream;
-            } else {
-                document.getElementById('rightVideo').srcObject = remoteStream;
+    function setupHostDataHandlers(connection) {
+        const guestId = connection.peer;
+
+        connection.on('open', () => {
+            let assignedSlot = -1;
+            const usedSlots = Object.values(players).map(p => p.slot);
+            for (let s = 0; s < 4; s++) {
+                if (!usedSlots.includes(s)) {
+                    assignedSlot = s;
+                    break;
+                }
             }
+
+            players[guestId] = {
+                id: guestId,
+                slot: assignedSlot,
+                score: 0,
+                color: SLOT_COLORS[assignedSlot],
+                pointer: { x: -1, y: -1, lastX: -1, lastY: -1 },
+                trail: [],
+                label: `Friend ${assignedSlot}`
+            };
+
+            conns[guestId] = connection;
+
+            connection.send({
+                type: 'welcome',
+                assignedSlot,
+                playersState: serializePlayers(),
+                myAssignedId: guestId
+            });
+
+            broadcastToGuests({
+                type: 'state-sync',
+                playersState: serializePlayers()
+            });
+
+            renderScoreboard();
+            updateVideoSlots();
             document.getElementById('setup-overlay').style.display = 'none';
-        });
-    }
-    function setupDataHandlers() {
-        conn.on('open', () => {
-            document.getElementById('setup-overlay').style.display = 'none';
-            if (isHost) {
+
+            if (getPlayerCount() === 2) {
                 startSpawning();
             }
         });
 
-        conn.on('data', (data) => {
-            if (data.type === 'cursor') {
-                peerPointer.lastX = peerPointer.x;
-                peerPointer.lastY = peerPointer.y;
-                peerPointer.x = data.x;
-                peerPointer.y = data.y;
-                peerTrail.push({ x: data.x, y: data.y});
-                if (peerTrail.length > 14) peerTrail.shift();
-            } else if (data.type === 'spawn') {
-                fruits.push(data.fruit);
-            } else if (data.type === 'slice') {
+        connection.on('data', (data) => {
+            if (data.type === 'cursor-request' && players[guestId]) {
+                const player = players[guestId];
+                player.pointer.lastX = player.pointer.x;
+                player.pointer.lastY = player.pointer.y;
+                player.pointer.x = data.x;
+                player.pointer.y = data.y;
+
+                player.trail.push({ x: data.x, y: data.y });
+                if (player.trail.length > 14) player.trail.shift();
+
+                broadcastToGuests({ type: 'cursor', playerId: guestId, x: data.x, y: data.y });
+            } else if (data.type === 'slice-request' && players[guestId]) {
                 const targetFruit = fruits.find(f => f.id === data.fruitId);
                 if (targetFruit && !targetFruit.sliced) {
-                    executeSlice(targetFruit, 'peer');
+                    executeSlice(targetFruit, guestId);
                 }
             }
         });
 
-        conn.on('close', () => { 
-            alert("Connection closed. The friend disconnected.");
+        connection.on('close', () => {
+            handlePlayerDisconnect(guestId);
+        });
+    }
+
+       function setupGuestDataHandlers(connection) {
+        connection.on('data', (data) => {
+            if (data.type === 'rejected') {
+                alert(data.reason);
+                location.reload();
+            } else if (data.type === 'welcome') {
+                mySlot = data.assignedSlot;
+                
+              
+                players[myId] = {
+                    id: myId,
+                    slot: mySlot,
+                    score: 0,
+                    color: SLOT_COLORS[mySlot],
+                    pointer: { x: -1, y: -1, lastX: -1, lastY: -1 },
+                    trail: [],
+                    label: "You"
+                };
+
+                applyPlayersState(data.playersState);
+                initHandTracking();
+                document.getElementById('setup-overlay').style.display = 'none';
+            } else if (data.type === 'state-sync') {
+                applyPlayersState(data.playersState);
+                if (data.slicedFruitId) {
+                    const targetFruit = fruits.find(f => f.id === data.slicedFruitId);
+                    if (targetFruit) {
+                        targetFruit.sliced = true;
+                        targetFruit.sliceAngle = data.sliceAngle;
+                        createSplat(targetFruit.x, targetFruit.y, targetFruit.color);
+                        playSliceSound();
+                    }
+                }
+            } else if (data.type === 'spawn') {
+                fruits.push(data.fruit);
+            } else if (data.type === 'cursor') {
+                if (players[data.playerId]) {
+                    const player = players[data.playerId];
+                    player.pointer.lastX = player.pointer.x;
+                    player.pointer.lastY = player.pointer.y;
+                    player.pointer.x = data.x;
+                    player.pointer.y = data.y;
+
+                    player.trail.push({ x: data.x, y: data.y });
+                    if (player.trail.length > 14) player.trail.shift();
+                }
+            }
+        });
+
+        connection.on('close', () => {
+            alert("Lobby connection closed.");
             location.reload();
         });
     }
+
+    function handleHostStreamCall(call) {
+        call.on('stream', (remoteStream) => {
+            const guestId = call.peer;
+            const player = players[guestId];
+            if (player) {
+                document.getElementById(`video-${player.slot}`).srcObject = remoteStream;
+            }
+        });
+    }
+
+    function handleGuestStreamCall(call) {
+        call.on('stream', (remoteStream) => {
+            document.getElementById('video-0').srcObject = remoteStream;
+        });
+    }
+
+    function applyPlayersState(state) {
+        Object.keys(state).forEach(pId => {
+            if (pId === myId) return;
+            
+            if (!players[pId]) {
+                players[pId] = {
+                    id: pId,
+                    slot: state[pId].slot,
+                    score: state[pId].score,
+                    color: state[pId].color,
+                    pointer: { x: -1, y: -1, lastX: -1, lastY: -1 },
+                    trail: [],
+                    label: state[pId].label
+                };
+            } else {
+                players[pId].score = state[pId].score;
+                players[pId].slot = state[pId].slot;
+                players[pId].color = state[pId].color;
+            }
+        });
+
+        Object.keys(players).forEach(pId => {
+            if (pId !== myId && !state[pId]) {
+                delete players[pId];
+            }
+        });
+
+        renderScoreboard();
+        updateVideoSlots();
+    }
+
+
+      function handlePlayerDisconnect(disconnectedId) {
+        if (players[disconnectedId]) {
+            delete players[disconnectedId];
+        }
+        if (conns[disconnectedId]) {
+            conns[disconnectedId].close();
+            delete conns[disconnectedId];
+        }
+        if (calls[disconnectedId]) {
+            calls[disconnectedId].close();
+            delete calls[disconnectedId];
+        }
+
+        renderScoreboard();
+        updateVideoSlots();
+
+        broadcastToGuests({
+            type: 'state-sync',
+            playersState: serializePlayers()
+        });
+
+        if (getPlayerCount() < 2 && spawnIntervalId) {
+            clearInterval(spawnIntervalId);
+            spawnIntervalId = null;
+        }
+    }
+
+    function startSpawning() {
+        if (spawnIntervalId) clearInterval(spawnIntervalId);
+        spawnIntervalId = setInterval(() => {
+            if (isHost && Object.keys(conns).length > 0) {
+                const activeCount = getPlayerCount();
+                const spawnIntensity = Math.min(4, Math.floor(activeCount / 1.3) + 1);
+                
+                for (let i = 0; i < spawnIntensity; i++) {
+                    setTimeout(() => {
+                        if (isHost) spawnFruit();
+                    }, i * 300);
+                }
+            }
+        }, 1600);
+    }
+
+
+
 
     function updateStatus(text) {
         document.getElementById('setup-status').innerText = text;
@@ -761,12 +1088,6 @@ let myScore = 0;
         }
     }
 
-    function startSpawning() {
-        if (spawnIntervalId) return;
-        spawnFruit();
-        spawnIntervalId = setInterval(spawnFruit, 1400);
-    }
-
     function gameLoop() {
         updatePhysics();
         draw();
@@ -775,9 +1096,3 @@ let myScore = 0;
 
     initConnection();
     gameLoop();
-
-
-
-
-
-
