@@ -31,6 +31,12 @@ let myScore = 0;
         banana: { name: 'banana', radius: 23, color: '#ffff33', src: 'banana.png' },
         kiwi: { name: 'kiwi', radius: 18, color: '#66ff66', src: 'kiwi.png' },
         mango: { name: 'mango', radius: 25, color: '#ffcc00', src: 'mango.png' },
+        apple: { name: 'apple', radius: 24, color: '#ff2233', src: 'apple.png'},
+        pineapple: { name: 'pineapple', radius: 36, color: '#e1b025', src: 'pineapple.png'},
+        strawberry: { name: 'strawberry', radius: 17, color: '#ff2a4b', src: 'strawberry.png'},
+        coconut: { name: 'coconut', radius: 28, color: '#8d5524', src: 'coconut.png'},
+        grape: { name: 'grape', radius: 21, color: '#8a2be2', src: 'grape.png' },
+        bomb: { name: 'bomb', radius: 26, color: '#ff5722', src: 'bomb.png', isBomb: true }
     }
 
     const preloadedImages = {};
@@ -168,7 +174,7 @@ let myScore = 0;
             }
         }
     }
-
+    //fallback fruits and bomb
     function drawDetailedFruitFallback( ctx, type, radius) {
         if (type === 'watermelon') {
             ctx.fillStyle = '#1e7b1e';
@@ -206,8 +212,82 @@ let myScore = 0;
         } else if (type === 'banana') {
             ctx.fillStyle = '#ffff00';
             ctx.beginPath(); ctx.ellipse(0, 0, radius * 1.3, radius * 0.45, 0, 0, Math.PI *2); ctx.fill();
+        } else if (type == 'apple') {
+            ctx.fillStyle = '#ff2233'
+            ctx.beginPath(); ctx.arc(0, 2, radius, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#000000'
+            ctx.beginPath(); ctx.arc(0, -radius, radius * 0.3, 0, Math.PI, true); ctx.fill();
+            ctx.strokeStyle = '#5c4033'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, -radius * 0.5); ctx.quadraticCurveTo(5, -radius*1.1, 8, -radius*1.2); ctx.stroke();
+        } else if ( type === 'pineapple') {
+            ctx.fillStyle = '#e1b025'
+            ctx.beginPath(); ctx.ellipse(0, 0, radius*0.8, radius*1.1, 0, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#9d6e0f'; ctx.lineWidth = 1.5;
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-radius * 0.6, i * 8); ctx.lineTo(radius*0.6, i*8-10);
+                ctx.moveTo(-radius * 0.6, i * 8 -10); ctx.lineTo(radius*0.6, i*8);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#1e7b1e'
+            ctx.beginPath();
+            ctx.moveTo(-10, -radius * 0.9); ctx.lineTo(0, -radius *1.5); ctx.lineTo(10, -radius*0.9);
+            ctx.moveTo(-18, -radius * 0.7); ctx.lineTo(-10, -radius *1.3); ctx.lineTo(0, -radius*0.8);
+            ctx.moveTo(18, -radius * 0.7); ctx.lineTo(10, -radius *1.3); ctx.lineTo(0, -radius*0.8);
+            ctx.fill();
+        } else if ( type === 'strawberry') {
+            ctx.fillStyle = '#ff2a4b'
+            ctx.beginPath(); 
+            ctx.moveTo(0, radius*1.1);
+            ctx.bezierCurveTo(-radius*1.2, 0, -radius*0.9, -radius, 0, -radius*0.7);
+            ctx.bezierCurveTo(-radius*0.9, -radius, radius*1.2, 0, 0, radius*1.1);
+            ctx.fill();
+            ctx.fillStyle = '#ffeb3b'
+            for (let i = -2; i <= 2; i++) {
+                for (let j = -2; j <= 2; j++) {
+                    if ((i+j)%2 === 0) {
+                        ctx.fillRect(i*5, j*5, 1.5, 2.5);
+                    }
+                }
+            }
+            ctx.fillStyle = '#4caf50'
+            ctx.beginPath();
+            ctx.moveTo(0, -radius*0.6);
+            ctx.lineTo(-12, -radius*0.9); ctx.lineTo(-4, -radius*0.7);
+            ctx.lineTo(0, -radius*1.1); ctx.lineTo(4, -radius*0.7);
+            ctx.lineTo(12, -radius*0.9); ctx.closePath(); ctx.fill();
+        } else if ( type === 'coconut') {
+            ctx.fillStyle = '#6d4c41'
+            ctx.beginPath(); ctx.arc(0, 0, radius*0.82, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle= '#ffffff';
+            ctx.beginPath(); ctx.arc(0, 0, radius*0.82, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle= '#212121';
+            ctx.beginPath(); ctx.arc(0, 0, radius*0.65, 0, Math.PI*2); ctx.fill();
+        } else if ( type === 'grape') {
+            ctx.fillStyle = '#8a2be2'
+            ctx.beginPath(); ctx.arc(-5, -5, radius * 0.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(5, -5, radius * 0.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 4, radius * 0.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-6, 3, radius * 0.45, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(6, 3, radius * 0.45, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 10, radius * 0.4, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(0, -12); ctx.stroke();
+        } else if ( type === 'bomb') {
+            ctx.fillStyle = '#212121'
+            ctx.beginPath(); ctx.arc(0, 4, radius * 0.85, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#757575'
+            ctx.fillRect(-6, -radius*0.8, 12, 6);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.moveTo(0, -radius*0.8); ctx.quadraticCurveTo(8, -radius * 1.2, 12, -radius*1.45);
+            ctx.stroke();
+            //burning spark
+            const pulse = Math.sin(Date.now()*0.05)*2.5;
+            ctx.fillStyle = '#ff9100';
+            ctx.beginPath(); ctx.arc(12, -radius*1.45, 5 + pulse, 0, Math.PI *2); ctx.fill();
+            ctx.fillStyle = '#ffea00';
+            ctx.beginPath(); ctx.arc(12, -radius*1.45, 2.5, 0, Math.PI*2); ctx.fill();
         }
-
     }
 
     function draw() {
@@ -385,10 +465,16 @@ let myScore = 0;
     function spawnFruit() {
         const fruitTemplates = [
             { color: '#ff3333', name : 'watermelon', radius : 40},
-            { color: '#ff9900', name : 'orange', radius : 40},
-            { color: '#66ff66', name : 'kiwi', radius : 40},
-            { color: '#ffcc00', name : 'mango', radius : 40},
-            { color: '#ffff33', name : 'banana', radius : 40},
+            { color: '#ff9900', name : 'orange', radius : 24},
+            { color: '#66ff66', name : 'kiwi', radius : 18},
+            { color: '#ffcc00', name : 'mango', radius : 25},
+            { color: '#ffff33', name : 'banana', radius : 23},
+            { color: '#ff2233', name: 'apple', radius : 24},
+            { color: '#e1b025', name: 'pineapple', radius : 36 },
+            { color: '#ff2a4b', name: 'strawberry', radius : 17},
+            { color: '#ffffff', name: 'coconut', radius : 28},
+            { color: '#8a2be2', name: 'grape', radius : 21},
+            { color: '#ff5722', name: 'bomb', radius: 26, isBomb: true }
         ]
 
         const template = fruitTemplates[Math.floor(Math.random()* fruitTemplates.length)];
@@ -401,6 +487,7 @@ let myScore = 0;
             radius: template.radius,
             color: template.color,
             name: template.name,
+            isBomb: template.isBomb || false,
             sliced: false,
             sliceAngle: 0,
             age: 0,
@@ -476,13 +563,21 @@ let myScore = 0;
         createSplat(fruit.x, fruit.y, fruit.color);
         playSliceSound();
         if (actor === 'me') {
-            myScore++;
+            if (fruit.isBomb) {
+                myScore = Math.max(0, myScore - 10);
+            } else {
+                myScore++;
+            }
             document.getElementById('my-score-val').innerText = myScore;
             if (conn && conn.open) {
                 conn.send({type : 'slice', fruitId : fruit.id });
             }
         } else {
-            peerScore++
+            if (fruit.isBomb) {
+                peerScore = Math.max(0, peerScore - 10);
+            } else {
+                peerScore++;
+            }
             document.getElementById('peer-score-val').innerText = peerScore;
         }
     }
