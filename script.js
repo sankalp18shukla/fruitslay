@@ -70,7 +70,7 @@ resizeCanvas();
     let particles = [];
     let backgroundSplats = [];
     let sliceRays = [];
-    const gravity = 0.13; 
+    const gravity = 0.4; 
     let spawnIntervalId= null;
     const WINNING_SCORE = 100;
     let gameOver = false;
@@ -374,8 +374,17 @@ function createBombExplosion(x, y) {
             } else {
                 fruit.x += fruit.vx;
                 fruit.y += fruit.vy;
-                fruit.vy += gravity * 1.6; 
+                fruit.vy += gravity * 1.3; 
                 fruit.age += 1;
+
+                let alpha = 1.0;
+                if (fruit.age > 45) {
+                    alpha = Math.max(0, 1.0 - (fruit.age - 45) * 0.02);
+                }
+                if (alpha <= 0) {
+                    fruits.splice(i, 1);
+                    continue;
+                }
             }
             if (fruit.y > canvas.height + 120 || fruit.x < -120 || fruit.x > canvas.width + 120) {
                 fruits.splice(i, 1);
@@ -620,6 +629,12 @@ function createBombExplosion(x, y) {
                 ctx.translate(fruit.x, fruit.y);
                 ctx.rotate(fruit.sliceAngle);
                 
+                let alpha = 1.0;
+                if (fruit.age > 45) {
+                    alpha = Math.max(0, 1.0 - (fruit.age - 45) * 0.02);
+                }
+                ctx.globalAlpha = alpha;
+
                 ctx.save();
                 ctx.translate(-offset, -offset * 0.15);
                 ctx.rotate(fruit.age * 0.05);
@@ -799,13 +814,13 @@ function createBombExplosion(x, y) {
         
         if (launchZone === 0) {
             spawnX = canvas.width * (0.08 + Math.random() * 0.12);
-            vx = 2.0 + Math.random() * 2.8; 
+            vx = 3.5 + Math.random() * 4.0; 
         } else if (launchZone === 1) {
             spawnX = canvas.width * (0.80 + Math.random() * 0.12);
-            vx = -2.0 - Math.random() * 2.8; 
+            vx = -3.5 - Math.random() * 4.0; 
         } else {
             spawnX = canvas.width * (0.35 + Math.random() * 0.30);
-            vx = (Math.random() - 0.5) * 1.6; 
+            vx = (Math.random() - 0.5) * 2.5; 
         }
 
         const fruit = {
@@ -813,7 +828,7 @@ function createBombExplosion(x, y) {
             x: spawnX,
             y: canvas.height + 40, 
             vx: vx, 
-            vy: -11.0 - Math.random() * 4.0, 
+            vy: -16.0 - Math.random() * 5.0, 
             radius: template.radius,
             color: template.color,
             name: template.name,
@@ -822,7 +837,7 @@ function createBombExplosion(x, y) {
             sliceAngle: 0,
             age: 0,
             spinAngle: Math.random() * Math.PI,
-            spinSpeed: (Math.random() - 0.5) * 0.05 
+            spinSpeed: (Math.random() - 0.5) * 0.08 
         };
 
         fruits.push(fruit);
@@ -927,21 +942,21 @@ function createBombExplosion(x, y) {
             clearInterval(spawnIntervalId);
             spawnIntervalId = null;
         }
-        const winner = players[winnerId];
-        const winnerLabel = winnerId === myId ? "YOU" : winner.label;
 
         broadcastToGuests({
             type: 'game-over',
             winnerId,
-            winnerLabel,
             finalScores: serializePlayers()
         });
 
-        showWinnerScreen(winnerLabel, winner.score);
+        const displayLabel = winnerId === myId ? "YOU" : (players[winnerId] ? players[winnerId].label : "A player");
+        const score = players[winnerId] ? players[winnerId].score : 100;
+        showWinnerScreen(displayLabel, score, winnerId === myId);
     }
 
-    function showWinnerScreen(winnerLabel, winnerScore) {
-        document.getElementById('winner-text').innerText = `${winnerLabel.toUpperCase()} WINS!`;
+    function showWinnerScreen(winnerLabel, winnerScore, isLocalWinner) {
+        const headerText = isLocalWinner ? "YOU WIN!" : `${winnerLabel.toUpperCase()} WINS!`;
+        document.getElementById('winner-text').innerText = headerText;
         document.getElementById('winner-status').innerText = `Reached ${winnerScore} points`;
         document.getElementById('winner-overlay').style.display = 'flex';
     }
@@ -1260,7 +1275,14 @@ function createBombExplosion(x, y) {
                 }
             } else if (data.type === 'game-over') {
                 gameOver = true;
-                showWinnerScreen(data.winnerLabel, data.finalScores[data.winnerId].score);
+                if (spawnIntervalId) {
+                    clearInterval(spawnIntervalId);
+                    spawnIntervalId = null;
+                }
+                const winnerId = data.winnerId;
+                const score = data.finalScores[winnerId] ? data.finalScores[winnerId].score : 100;
+                const displayLabel = winnerId === myId ? "YOU" : (players[winnerId] ? players[winnerId].label : "A player");
+                showWinnerScreen(displayLabel, score, winnerId === myId);
             } else if (data.type === 'start-sequence') {
                 showStartFlashSequence();
             }
