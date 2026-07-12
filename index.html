@@ -6,7 +6,6 @@
     <title>fruit slayyers</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -34,7 +33,7 @@
         <video id="video-3" autoplay playsinline></video>
         <div class="video-label" id="label-3">Slot 3</div>
     </div>
-    <div id="setup-overlay">
+        <div id="setup-overlay">
         <div class="setup-card">
             <h2>Fruit Slayyers</h2>
             <p id="setup-status">Configuring hand tracking and secure P2P stream...</p>
@@ -46,8 +45,14 @@
             </div>
         </div>
     </div>
+    <div id="winner-overlay" style="display:none;">
+        <div class="setup-card">
+            <h2 id="winner-text">PLAYER WINS!</h2>
+            <p id="winner-status"></p>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
 </div>
-
 
 </body>
 
