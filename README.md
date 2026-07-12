@@ -75,6 +75,17 @@ you can play solo-ish to test it, but the actual point is playing with friends. 
 
 ![four players](4.png)
 
+## ai usage, being real about it
+
+used ai a bit here and there, not gonna pretend i didn't. mainly for:
+- initial structuring of the project when i was starting out
+- designing the fallback fruit drawings (the canvas-drawn shapes used when an image asset fails to load)
+- some minor debugging near the end
+
+that's it. honestly less than 10% of this, definitely not more than 20%. most of the actual game logic, the hand tracking integration, the p2p/webrtc syncing, the physics, the slicing detection, all of that was me grinding through it myself.
+
+this whole thing took me about 13 hours spread across days. if i'd just let ai build it end to end it probably would've been an hour of work, but that defeats the point of actually building something and learning from it.
+
 ## notes / things worth knowing
 
 - everything is peer-to-peer, so game performance depends a bit on everyone's internet connection, not a central server
